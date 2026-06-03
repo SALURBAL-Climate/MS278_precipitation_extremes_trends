@@ -11,8 +11,6 @@ library(tidyr); library(writexl)
 
 rm(list= ls())
 
-setwd("C:/Users/saral/Desktop/SALURBAL-CLIMATE/SALURBAL-C/MS278")
-
 data <- read_parquet("Data/data_prec_final.parquet")
 
 #-----------------------------------------------------------
@@ -40,6 +38,16 @@ pop_annual_country <- data %>%
   mutate(py_exposure_2000    = round(pop_exposed_2000 / 365.25, 0),
          py_exposure_2000_24 = round(pop_exposed_2000_24 / 365.25, 0))
 
+# 2. pct of the total py by country
+country_exposure <- pop_annual_country %>%
+  group_by(Country) %>%
+  summarise(
+    py_exposed = sum(py_exposure_2000_24, na.rm = TRUE),
+    py_total = sum(t_pop_2000_24, na.rm = TRUE),
+    pct_exposed = round(100 * py_exposed / py_total, 1),.groups = "drop") %>%
+  arrange(desc(pct_exposed))
+print(country_exposure)
+
 # 3. By year city
 pop_annual_city <- data %>% 
   group_by(SALID1, YEAR) %>%
@@ -64,6 +72,7 @@ max(pop_total_year$py_exposure_2000_24)
 
 # Export
 write_xlsx(pop_annual_country, "pop_annual_country.xlsx")
+
 #---------------------------------------------------------------
 # Calculate the overall % and by country from the total
 #---------------------------------------------------------------

@@ -13,9 +13,6 @@ library(ggspatial); library(RColorBrewer); library(scales)
 library(ggpubr); library(xlsx); library(readxl)
 library(grid); library(patchwork)
 
-data <- read_parquet("Data/data_prec_final.parquet")
-str(data)
-
 #--------------------------------------------------
 # Sup Figure 1
 #--------------------------------------------------
@@ -49,9 +46,9 @@ slope_data <- reduce(dfs, left_join, by = "SALID1")
 shp_SALURBAL_countries <- st_transform(shp_SALURBAL_countries, crs = 4326)
 
 # joins slope and shp
-data <- slope_data %>% left_join(shapefile, by = "SALID1")
+data_map <- slope_data %>% left_join(shapefile, by = "SALID1")
 
-data_sf <- st_as_sf(data)
+data_sf <- st_as_sf(data_map)
 
 # R95PCC map
 rdylbu <- RColorBrewer::brewer.pal(11, "RdYlBu")
@@ -64,7 +61,7 @@ R95PCC_slope <- ggplot() +
                        values = rescale(c(-85, -1, 0, 1, 144)),
                        limits = c(-85, 144),
                        oob = squish,
-                       name = "R95p") +
+                       name = "R95p (mm)") +
   ggtitle("A") +
   theme_minimal() +
   theme(plot.title = element_text(hjust = 0, face = "bold", size = 16),
@@ -109,7 +106,7 @@ Rx1dayCC_slope <- ggplot() +
                        values = rescale(c(-9, -1, 0, 1, 10)),
                        limits = c(-9, 10),
                        oob = squish,
-                       name = "RX1day") +
+                       name = "RX1day (mm)") +
   ggtitle("B") +
   theme_minimal() +
   theme(plot.title = element_text(hjust = 0, face = "bold", size = 16),
@@ -154,7 +151,7 @@ Rx5dayCC_slope <- ggplot() +
                        values = rescale(c(-17, -1, 0, 1, 23)),
                        limits = c(-17, 23),
                        oob = squish,
-                       name = "RX5day") +
+                       name = "RX5day (mm)") +
   ggtitle("C") +
   theme_minimal() +
   theme(plot.title = element_text(hjust = 0, face = "bold", size = 16),
@@ -200,6 +197,8 @@ ggsave("Figures/Sup_Figure_1.png", Sup_Figure1,
 #--------------------------------------------------
 # Sup Figure 2
 #--------------------------------------------------
+data <- read_parquet("Data/data_prec_final.parquet")
+
 Sup_Figure_2a <- data %>%
   ggplot() +
   geom_jitter(aes(x = CLZ, y = R95PCC),
@@ -347,6 +346,137 @@ ggsave("Figures/Sup_Figure_3.png", plot = Sup_Figure_3,
 #--------------------------------------------------
 # Sup Figure 4
 #--------------------------------------------------
+slopes_Rx1day <- read_csv("Model_results/L1AD/Rx1day/Rx1day_city_random_slopes.csv")
+slopes_Rx5day <- read_csv("Model_results/L1AD/Rx5day/Rx5day_city_random_slopes.csv")
+
+shapefile <- st_read("Data/SHP/L1AD_centroid.shp")
+shp_SALURBAL_countries <- st_read("Data/SHP/LA_countries.shp")
+shp_base <- st_read("Data/SHP/LA_base.shp")
+
+shp_SALURBAL_countries <- st_transform(shp_SALURBAL_countries, crs = 4326)
+
+# Prepare data
+slopes_Rx1day <- slopes_Rx1day %>% 
+  rename(Rx1day = slope_total) %>% 
+  mutate(Rx1day = round(Rx1day, 0)) %>% 
+  select(Rx1day, SALID1)
+
+slopes_Rx5day <- slopes_Rx5day %>% 
+  rename(Rx5day = slope_total) %>% 
+  mutate(Rx5day = round(Rx5day, 0)) %>% 
+  select(Rx5day, SALID1)
+
+dfs <- list(slopes_Rx1day, slopes_Rx5day)
+slope_data <- reduce(dfs, left_join, by = "SALID1")
+
+# joins slope and shp
+data <- slope_data %>% left_join(shapefile, by = "SALID1")
+
+data_sf <- st_as_sf(data)
+
+#maps
+rdylbu <- RColorBrewer::brewer.pal(11, "RdYlBu")
+
+# Rx1day
+Rx1day_slope <- ggplot() +
+  geom_sf(data = shp_base, fill = "#bdbdbd", color = "#bdbdbd", linewidth = 0.3) +
+  geom_sf(data = shp_SALURBAL_countries, fill = "white", color = "#bdbdbd", linewidth = 0.3) +
+  geom_sf(data = data_sf, aes(fill = Rx1day), shape = 21, color = "#4d4d4d", size = 2, stroke = 0.3) +          
+  scale_fill_gradientn(colours = rdylbu,
+                       values = rescale(c(-9, -1, 0, 1, 10)),
+                       limits = c(-9, 10),
+                       oob = squish,
+                       name = "RX1day (mm)") +
+  ggtitle("A") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0, face = "bold", size = 16),
+        legend.position = c(0.90, 0.2), 
+        legend.title = element_text(face = "bold", size = 14),
+        axis.title = element_blank()) +
+  annotation_custom(grob = rectGrob(x = unit(0.13, "npc"),
+                                    y = unit(0.05, "npc"),
+                                    width = unit(0.25, "npc"),
+                                    height = unit(0.05, "npc"),
+                                    gp = gpar(fill = "white", col = NA))) +
+  annotation_custom(grob = grid::grobTree(grid::polylineGrob(
+    x = unit(c(0.85, 0.84, 0.85, 0.86), "npc"),
+    y = unit(c(0.85, 0.87, 0.85, 0.87), "npc") + unit(0.15, "cm"),
+    id = c(1, 1, 2, 2),
+    gp = grid::gpar(col = "#737373", lwd = 1)),
+    grid::textGrob("S", x = unit(0.85, "npc"), 
+                   y = unit(0.83, "npc") + unit(0.18, "cm"),
+                   gp = gpar(fontsize = 6, fontface = "plain"))))+
+  ggsn::scalebar(data = shp_base,
+                 location = "bottomleft",
+                 dist = 500,
+                 dist_unit = "km",
+                 transform = TRUE,
+                 model = "WGS84",
+                 height = 0.02,
+                 st.size = 3,
+                 st.dist = 0.04,
+                 box.fill = c("white", "white"),
+                 box.color = "gray30",
+                 border.size = 0.2,
+                 st.bottom = TRUE)
+
+Rx1day_slope
+
+# Rx5day
+Rx5day_slope <- ggplot() +
+  geom_sf(data = shp_base, fill = "#bdbdbd", color = "#bdbdbd", linewidth = 0.3) +
+  geom_sf(data = shp_SALURBAL_countries, fill = "white", color = "#bdbdbd", linewidth = 0.3) +
+  geom_sf(data = data_sf, aes(fill = Rx5day), shape = 21, color = "#4d4d4d", size = 2, stroke = 0.3) +          
+  scale_fill_gradientn(colours = rdylbu,
+                       values = rescale(c(-17, -1, 0, 1, 23)),
+                       limits = c(-17, 23),
+                       oob = squish,
+                       name = "RX5day (mm)") +
+  ggtitle("B") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0, face = "bold", size = 16),
+        legend.position = c(0.90, 0.2), 
+        legend.title = element_text(face = "bold", size = 14),
+        axis.title = element_blank()) +
+  annotation_custom(grob = rectGrob(x = unit(0.13, "npc"),
+                                    y = unit(0.05, "npc"),
+                                    width = unit(0.25, "npc"),
+                                    height = unit(0.05, "npc"),
+                                    gp = gpar(fill = "white", col = NA))) +
+  annotation_custom(grob = grid::grobTree(grid::polylineGrob(
+    x = unit(c(0.85, 0.84, 0.85, 0.86), "npc"),
+    y = unit(c(0.85, 0.87, 0.85, 0.87), "npc") + unit(0.15, "cm"),
+    id = c(1, 1, 2, 2),
+    gp = grid::gpar(col = "#737373", lwd = 1)),
+    grid::textGrob("S", x = unit(0.85, "npc"), 
+                   y = unit(0.83, "npc") + unit(0.18, "cm"),
+                   gp = gpar(fontsize = 6, fontface = "plain"))))+
+  ggsn::scalebar(data = shp_base,
+                 location = "bottomleft",
+                 dist = 500,
+                 dist_unit = "km",
+                 transform = TRUE,
+                 model = "WGS84",
+                 height = 0.02,
+                 st.size = 3,
+                 st.dist = 0.04,
+                 box.fill = c("white", "white"),
+                 box.color = "gray30",
+                 border.size = 0.2,
+                 st.bottom = TRUE)
+
+Rx5day_slope
+
+# join maps to figure 3 
+Sup_Figure_4 <- (Rx1day_slope) | (Rx5day_slope)
+Sup_Figure_4
+
+ggsave("Figures/Sup_Figure_4.png", Sup_Figure_4, 
+       width = 16, height = 8, dpi = 700, bg = "white")
+
+#--------------------------------------------------
+# Sup Figure 5
+#--------------------------------------------------
 pop_annual_country <- read_xlsx("pop_annual_country.xlsx")
 
 annual_total <- pop_annual_country %>%
@@ -367,7 +497,7 @@ annual_total_long <- annual_total %>%
                       "exposure_obs"  = "Population (2000-2024)"),
     exposure = exposure / 1e6)
 
-sup_fig4 <- ggplot(annual_total_long,
+sup_fig5 <- ggplot(annual_total_long,
                    aes(x = YEAR,
                        y = exposure,
                        color = scenario,
@@ -391,22 +521,22 @@ sup_fig4 <- ggplot(annual_total_long,
        linetype = "",) +
   theme_minimal(base_size = 18) +
   theme(
-    plot.title = element_text(size = 18, face = "bold"),
-    axis.text.x = element_text(size = 18, hjust = 0.5, color = "black"),
-    axis.text.y = element_text(size = 18, color = "black"),
-    axis.title.x = element_text(size = 18),
-    axis.title.y = element_text(size = 18),
+    plot.title = element_text(size = 30, face = "bold"),
+    axis.text.x = element_text(size = 28, hjust = 0.5, color = "black"),
+    axis.text.y = element_text(size = 28, color = "black"),
+    axis.title.x = element_text(size = 20),
+    axis.title.y = element_text(size = 28),
     legend.position = "bottom",
-    legend.text = element_text(size = 16),
-    legend.title = element_text(size = 16))
+    legend.text = element_text(size = 24),
+    legend.title = element_text(size = 24))
 
-sup_fig4
+sup_fig5
 
-ggsave("Figures/Sup_Figure_4.png", plot = sup_fig4, 
-       width = 22, height = 14, dpi = 300, bg = "white")
+ggsave("Figures/Sup_Figure_5.png", plot = sup_fig5, 
+       width = 20, height = 12, dpi = 700, bg = "white")
 
 #--------------------------------------------------
-# Sup Figure 5
+# Sup Figure 6
 #--------------------------------------------------
 pop_long <- pop_annual_country %>%
   pivot_longer(cols = c(py_exposure_2000, py_exposure_2000_24),
@@ -416,7 +546,7 @@ pop_long <- pop_annual_country %>%
                            "py_exposure_2000" = "Fixed population (2000)",
                            "py_exposure_2000_24" = "Population (2000-2024)"))
 
-Sup_fig_5 <- ggplot(pop_long,
+Sup_fig_6 <- ggplot(pop_long,
                     aes(x = YEAR,
                         y = exposure,
                         color = scenario,
@@ -447,15 +577,17 @@ Sup_fig_5 <- ggplot(pop_long,
   theme(
     strip.background = element_rect(fill = "white", color = "black", linewidth = 0.4),
     strip.text = element_text(face = "bold", size = 16),
-    plot.title = element_text(size = 18, face = "bold"),
-    axis.text.x = element_text(size = 12, angle = 90, hjust = 1, vjust = 0.5, color = "black"),
-    axis.text.y = element_text(size = 14, color = "black"),
-    axis.title.x = element_text(size = 14),
-    axis.title.y = element_text(size = 16),
+    plot.title = element_text(size = 28, face = "bold"),
+    axis.text.x = element_text(size = 20, angle = 90, hjust = 1, vjust = 0.5, color = "black"),
+    axis.text.y = element_text(size = 20, color = "black"),
+    axis.title.x = element_text(size = 20),
+    axis.title.y = element_text(size = 20),
     panel.spacing = unit(1, "lines"),
-    legend.position = "bottom")
-Sup_fig_5
+    legend.position = "bottom",
+    legend.text = element_text(size = 24),
+    legend.title = element_text(size = 24))
+Sup_fig_6
 
-ggsave("Figures/Sup_Figure_5.png", plot = Sup_fig_5, 
+ggsave("Figures/Sup_Figure_6.png", plot = Sup_fig_6, 
        width = 22, height = 14, dpi = 300, bg = "white")
 

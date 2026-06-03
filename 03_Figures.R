@@ -14,7 +14,6 @@ library(ggpubr); library(xlsx); library(readxl)
 library(grid); library(patchwork)
 
 data <- read_parquet("Data/data_prec_final.parquet")
-str(data)
 
 #--------------------------------------------------
 # Figure 1
@@ -120,7 +119,7 @@ Figure_2b <- ggplot() +
   coord_cartesian(ylim = c(0, 600)) +
   labs(title = "B",
        x = "Year",
-       y = "Rx1day (mm)") +
+       y = "RX1day (mm)") +
   theme_bw(base_size = 16) +
   theme(
     strip.background = element_rect(fill = "white", color = "black", linewidth = 0.4),
@@ -143,7 +142,7 @@ Figure_2c <- ggplot() +
   coord_cartesian(ylim = c(0, 600)) +
   labs(title = "C",
        x = "Year",
-       y = "Rx5day (mm)") +
+       y = "RX5day (mm)") +
   theme_bw(base_size = 16) +
   theme(
     strip.background = element_rect(fill = "white", color = "black", linewidth = 0.4),
@@ -167,12 +166,12 @@ ggsave("Figures/Figure_2.png", plot = Figure_2,
 # Figure 3
 #--------------------------------------------------
 slopes_R95P <- read_csv("Model_results/L1AD/R95P/R95P_city_random_slopes.csv")
-slopes_Rx1day <- read_csv("Model_results/L1AD/Rx1day/Rx1day_city_random_slopes.csv")
-slopes_Rx5day <- read_csv("Model_results/L1AD/Rx5day/Rx5day_city_random_slopes.csv")
 
 shapefile <- st_read("Data/SHP/L1AD_centroid.shp")
 shp_SALURBAL_countries <- st_read("Data/SHP/LA_countries.shp")
 shp_base <- st_read("Data/SHP/LA_base.shp")
+
+shp_SALURBAL_countries <- st_transform(shp_SALURBAL_countries, crs = 4326)
 
 # Prepare data
 slopes_R95P <- slopes_R95P %>% 
@@ -180,30 +179,15 @@ slopes_R95P <- slopes_R95P %>%
   mutate(R95P = round(R95P, 0)) %>% 
   select(R95P, SALID1)
 
-slopes_Rx1day <- slopes_Rx1day %>% 
-  rename(Rx1day = slope_total) %>% 
-  mutate(Rx1day = round(Rx1day, 0)) %>% 
-  select(Rx1day, SALID1)
-
-slopes_Rx5day <- slopes_Rx5day %>% 
-  rename(Rx5day = slope_total) %>% 
-  mutate(Rx5day = round(Rx5day, 0)) %>% 
-  select(Rx5day, SALID1)
-
-dfs <- list(slopes_R95P, slopes_Rx1day, slopes_Rx5day)
-slope_data <- reduce(dfs, left_join, by = "SALID1")
-
-shp_SALURBAL_countries <- st_transform(shp_SALURBAL_countries, crs = 4326)
-
 # joins slope and shp
-data <- slope_data %>% left_join(shapefile, by = "SALID1")
+data <- slopes_R95P %>% left_join(shapefile, by = "SALID1")
 
 data_sf <- st_as_sf(data)
 
 # R95p map
 rdylbu <- RColorBrewer::brewer.pal(11, "RdYlBu")
 
-R95P_slope <- ggplot() +
+Figure_3 <- ggplot() +
   geom_sf(data = shp_base, fill = "#bdbdbd", color = "#bdbdbd", linewidth = 0.3) +
   geom_sf(data = shp_SALURBAL_countries, fill = "white", color = "#bdbdbd", linewidth = 0.3) +
   geom_sf(data = data_sf, aes(fill = R95P), shape = 21, color = "#4d4d4d", size = 2, stroke = 0.3) +          
@@ -211,8 +195,8 @@ R95P_slope <- ggplot() +
                        values = rescale(c(-85, -1, 0, 1, 144)),
                        limits = c(-85, 144),
                        oob = squish,
-                       name = "R95p") +
-  ggtitle("A") +
+                       name = "R95p (mm)") +
+  ggtitle(" ") +
   theme_minimal() +
   theme(plot.title = element_text(hjust = 0, face = "bold", size = 16),
         legend.position = c(0.90, 0.2), 
@@ -245,101 +229,7 @@ R95P_slope <- ggplot() +
                  border.size = 0.2,
                  st.bottom = TRUE)
 
-R95P_slope
-
-# Rx1day
-Rx1day_slope <- ggplot() +
-  geom_sf(data = shp_base, fill = "#bdbdbd", color = "#bdbdbd", linewidth = 0.3) +
-  geom_sf(data = shp_SALURBAL_countries, fill = "white", color = "#bdbdbd", linewidth = 0.3) +
-  geom_sf(data = data_sf, aes(fill = Rx1day), shape = 21, color = "#4d4d4d", size = 2, stroke = 0.3) +          
-  scale_fill_gradientn(colours = rdylbu,
-                       values = rescale(c(-9, -1, 0, 1, 10)),
-                       limits = c(-9, 10),
-                       oob = squish,
-                       name = "RX1day") +
-  ggtitle("B") +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0, face = "bold", size = 16),
-        legend.position = c(0.90, 0.2), 
-        legend.title = element_text(face = "bold", size = 14),
-        axis.title = element_blank()) +
-  annotation_custom(grob = rectGrob(x = unit(0.13, "npc"),
-                                    y = unit(0.05, "npc"),
-                                    width = unit(0.25, "npc"),
-                                    height = unit(0.05, "npc"),
-                                    gp = gpar(fill = "white", col = NA))) +
-  annotation_custom(grob = grid::grobTree(grid::polylineGrob(
-    x = unit(c(0.85, 0.84, 0.85, 0.86), "npc"),
-    y = unit(c(0.85, 0.87, 0.85, 0.87), "npc") + unit(0.15, "cm"),
-    id = c(1, 1, 2, 2),
-    gp = grid::gpar(col = "#737373", lwd = 1)),
-    grid::textGrob("S", x = unit(0.85, "npc"), 
-                   y = unit(0.83, "npc") + unit(0.18, "cm"),
-                   gp = gpar(fontsize = 6, fontface = "plain"))))+
-  ggsn::scalebar(data = shp_base,
-                 location = "bottomleft",
-                 dist = 500,
-                 dist_unit = "km",
-                 transform = TRUE,
-                 model = "WGS84",
-                 height = 0.02,
-                 st.size = 3,
-                 st.dist = 0.04,
-                 box.fill = c("white", "white"),
-                 box.color = "gray30",
-                 border.size = 0.2,
-                 st.bottom = TRUE)
-
-Rx1day_slope
-
-# Rx5day
-Rx5day_slope <- ggplot() +
-  geom_sf(data = shp_base, fill = "#bdbdbd", color = "#bdbdbd", linewidth = 0.3) +
-  geom_sf(data = shp_SALURBAL_countries, fill = "white", color = "#bdbdbd", linewidth = 0.3) +
-  geom_sf(data = data_sf, aes(fill = Rx5day), shape = 21, color = "#4d4d4d", size = 2, stroke = 0.3) +          
-  scale_fill_gradientn(colours = rdylbu,
-                       values = rescale(c(-17, -1, 0, 1, 23)),
-                       limits = c(-17, 23),
-                       oob = squish,
-                       name = "RX5day") +
-  ggtitle("C") +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0, face = "bold", size = 16),
-        legend.position = c(0.90, 0.2), 
-        legend.title = element_text(face = "bold", size = 14),
-        axis.title = element_blank()) +
-  annotation_custom(grob = rectGrob(x = unit(0.13, "npc"),
-                                    y = unit(0.05, "npc"),
-                                    width = unit(0.25, "npc"),
-                                    height = unit(0.05, "npc"),
-                                    gp = gpar(fill = "white", col = NA))) +
-  annotation_custom(grob = grid::grobTree(grid::polylineGrob(
-    x = unit(c(0.85, 0.84, 0.85, 0.86), "npc"),
-    y = unit(c(0.85, 0.87, 0.85, 0.87), "npc") + unit(0.15, "cm"),
-    id = c(1, 1, 2, 2),
-    gp = grid::gpar(col = "#737373", lwd = 1)),
-    grid::textGrob("S", x = unit(0.85, "npc"), 
-                   y = unit(0.83, "npc") + unit(0.18, "cm"),
-                   gp = gpar(fontsize = 6, fontface = "plain"))))+
-  ggsn::scalebar(data = shp_base,
-                 location = "bottomleft",
-                 dist = 500,
-                 dist_unit = "km",
-                 transform = TRUE,
-                 model = "WGS84",
-                 height = 0.02,
-                 st.size = 3,
-                 st.dist = 0.04,
-                 box.fill = c("white", "white"),
-                 box.color = "gray30",
-                 border.size = 0.2,
-                 st.bottom = TRUE)
-
-Rx5day_slope
-
-# join maps to figure 3 
-Figure_3 <- (R95P_slope) | (Rx1day_slope) | (Rx5day_slope)
 Figure_3
 
 ggsave("Figures/Figure_3.png", Figure_3, 
-       width = 20, height = 8, dpi = 700, bg = "white")
+       width = 8, height = 8, dpi = 700, bg = "white")

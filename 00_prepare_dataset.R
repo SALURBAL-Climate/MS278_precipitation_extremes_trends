@@ -64,7 +64,6 @@ data_long <- data_long %>%
          pop_density_guf = BECPOPDENGUFL1AD,
          total_pop = PRJL1ADPOP,
          pop_over65 = PRJL1ADPOP_GE65,
-         GINI = SECGINIINCL1AD,
          GDP = GDP_PCL1AD,
          education =   CNSMINPR_L1AD,
          coastal = BECCOASTL1AD,
