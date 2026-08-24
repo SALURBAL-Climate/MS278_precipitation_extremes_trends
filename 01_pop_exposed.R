@@ -2,7 +2,6 @@
 # MS278: Descriptive precitation extremes
 #
 # This script calculate the population exposed to prec extremes
-# Population exposed - person-days and person-years
 #
 ##################################################################
 
