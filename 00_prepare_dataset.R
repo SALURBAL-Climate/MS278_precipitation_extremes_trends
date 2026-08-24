@@ -163,7 +163,7 @@ data_prec_new <- data_prec_new %>%
   ungroup()
 
 # 10. Calculate annual number of days above the 95 percentile for pop exposed
-data_daily <- read.csv("Data/GSMaP_L1_1998_2024.csv")
+data_daily <- read.csv("Data/2026_03_02/data/GSMaP_L1_1998_2024.csv")
 
 data_daily <- data_daily %>%
   select(SALID1, date, prec_L1AD) %>% 
