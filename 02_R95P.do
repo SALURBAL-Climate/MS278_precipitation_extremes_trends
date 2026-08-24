@@ -1,21 +1,47 @@
 cd "C:\Users\saral\Desktop\SALURBAL-CLIMATE\SALURBAL-C\MS278\Model_results\L1AD\R95P"
 
-import excel "C:\Users\saral\Desktop\SALURBAL-CLIMATE\SALURBAL-C\MS278\Data\data_prec_final.xlsx", sheet("Sheet1") firstrow
-
-histogram R95P
-graph export "hist.jpg", as(jpg) name("Graph") quality(90)
-
-twoway (scatter R95P YEAR_dec, mcolor(%20) msymbol(o)) (lowess R95P YEAR_dec, lcolor(blue)) (lfit R95P YEAR_dec,lpattern(dash) lcolor(red)), legend(order(1 "Pontos" 2 "Loess" 3 "Linear")) ytitle("R95P") xtitle("YEAR_dec")
-graph export "R95P_scatter.png", replace width(2000)
+import excel "C:\Users\saral\Desktop\SALURBAL-CLIMATE\SALURBAL-C\MS278\Data\data_prec_final_wht_polar.xlsx", sheet("Sheet1") firstrow
 
 ****************************************************
 * 1. Null model
 ****************************************************
 mixed R95P || SALID1:, vce(robust)
-estat recovariance
-estat icc
 
-outreg2 using R95P_null_model, replace word dec(2) ci
+estat recovariance
+matrix C = r(Cov2)
+scalar var_between = C[1,1]
+
+* var
+scalar var_within = exp(_b[lnsig_e:_cons])^2
+
+* ICC
+scalar ICC = var_between / (var_between + var_within)
+
+scalar ICC_pct = ICC * 100
+
+preserve
+
+clear
+set obs 1
+
+gen str10 Index = "R95P"
+
+gen double Between = var_between
+
+gen double Within = var_within
+
+gen double ICC_pct = ICC_pct
+
+format Between %15.6f
+format Within  %15.6f
+format ICC_pct %15.4f
+
+list, noobs clean
+
+* Export
+export excel using "R95P_null_variance.xlsx", replace firstrow(variables)
+
+restore
 
 *******************************************************
 * 2. Add year as fixed effect - linear
@@ -31,47 +57,7 @@ est store linear_model
 mixed R95P c.YEAR_dec || SALID1: c.YEAR_dec, vce(robust)
 estat icc
 
-predict resid_linear, residuals
-twoway (scatter resid_linear YEAR_dec) (lowess resid_linear YEAR_dec), title("Residuals from Linear Model")
-
-* obs vs fitted
-predict yhat, fitted
-*twoway (scatter R95P YEAR_dec, mcolor(gs10) msymbol(o)) (line yhat YEAR_dec, sort lcolor(black) lwidth(medthick)), legend(order(1 "Observed" 2 "Fitted")) ytitle("R95P (%)") xtitle("Year (decades)")
-*graph export "R95P_time_only_model.png", replace width(2000)
-
-* Plots obs vs pred for each city
-predict yhat_fixed, xb
-predict re_intercept re_slope, reffects
-gen yhat_city = _b[_cons] + re_intercept + (_b[YEAR_dec] + re_slope) * YEAR_dec
-corr yhat_fixed yhat_city
-
-set scheme s1color
-
-egen city_group = cut(SALID1), group(12)
-levelsof city_group, local(groups)
-
-sort SALID1 YEAR_dec
-
-foreach g of local groups {
-
-    preserve
-    keep if city_group==`g'
-
-    sort SALID1 YEAR_dec
-
-    twoway ///
-    (line R95P YEAR_dec, sort lcolor(black) lwidth(thin)) ///
-   (line yhat_city YEAR_dec, sort lcolor(red) lwidth(medthick)), ///
-   by(SALID1, cols(4) compact note("")) ///
-    legend(order(1 "Observed" 2 "Predicted")) ///
-    name(graph`g', replace)
-
-    graph export "R95P_obs_vs_pred_group_`g'.png", replace width(2000)
-
-    restore
-}
-
-* Extract random effects aleatórios
+* Extract random effects
 predict double re1 re2, reffects
 
 * check order
@@ -142,11 +128,9 @@ restore
 encode CLZ, gen(CLZ_num)
 label list CLZ_num
 
-mixed R95P ib4.CLZ_num c.YEAR_dec || SALID1: c.YEAR_dec, vce(robust)
-
 preserve
 
-    mixed R95P ib4.CLZ_num c.YEAR_dec || SALID1: c.YEAR_dec, vce(robust)
+    mixed R95P ib3.CLZ_num c.YEAR_dec || SALID1: c.YEAR_dec, vce(robust)
 
     parmest, norestore level(95)
     export delimited using "R95P_CLZ.csv", replace
@@ -156,16 +140,122 @@ restore
 ****************************************************
 * 5. Climate zones - interaction term
 ****************************************************
-mixed R95P ib4.CLZ_num##c.YEAR_dec || SALID1: c.YEAR_dec, vce(robust)
-
-testparm i.CLZ_num#c.YEAR_dec
+mixed R95P ib3.CLZ_num##c.YEAR_dec || SALID1: c.YEAR_dec, vce(robust)
 
 preserve
 
-mixed R95P ib4.CLZ_num##c.YEAR_dec || SALID1: c.YEAR_dec, vce(robust)
-
 parmest, norestore level(95)
-export delimited using "R95P_CLZ_interaction.csv", replace
+
+*export delimited using "R95P_CLZ_interaction_coefficients.csv", replace
+
+restore
+
+* 5.1. Global test of interaction
+mixed R95P ib3.CLZ_num##c.YEAR_dec || SALID1: c.YEAR_dec, vce(robust)
+
+testparm i.CLZ_num#c.YEAR_dec
+
+* Store results from the joint test
+local chi2 = r(chi2)
+local df   = r(df)
+local p    = r(p)
+
+preserve
+
+clear
+set obs 1
+
+gen chi2 = `chi2'
+gen df   = `df'
+gen p    = `p'
+
+format chi2 %9.3f
+format df %9.0f
+format p %9.4f
+
+export delimited using "R95P_CLZ_interaction_test.csv", replace
+
+restore
+
+* Trends
+tempname memhold
+postfile `memhold' ///
+str15 Climate_zone ///
+double(Base_coef Base_LCI Base_UCI Base_p ///
+Trend Trend_LCI Trend_UCI Trend_p) ///
+using CLZ_results_temp.dta, replace
+
+* Tropical (reference)
+lincom YEAR_dec
+
+local trend      = r(estimate)
+local trend_lci  = r(lb)
+local trend_uci  = r(ub)
+local trend_p    = r(p)
+
+post `memhold' ///
+("Tropical") ///
+(0) (.) (.) (.) ///
+(`trend') (`trend_lci') (`trend_uci') (`trend_p')
+
+* Arid
+lincom 1.CLZ_num
+
+local base      = r(estimate)
+local base_lci  = r(lb)
+local base_uci  = r(ub)
+local base_p    = r(p)
+
+lincom YEAR_dec + 1.CLZ_num#c.YEAR_dec
+
+local trend      = r(estimate)
+local trend_lci  = r(lb)
+local trend_uci  = r(ub)
+local trend_p    = r(p)
+
+post `memhold' ///
+("Arid") ///
+(`base') (`base_lci') (`base_uci') (`base_p') ///
+(`trend') (`trend_lci') (`trend_uci') (`trend_p')
+
+* Temperate
+lincom 2.CLZ_num
+
+local base      = r(estimate)
+local base_lci  = r(lb)
+local base_uci  = r(ub)
+local base_p    = r(p)
+
+lincom YEAR_dec + 2.CLZ_num#c.YEAR_dec
+
+local trend      = r(estimate)
+local trend_lci  = r(lb)
+local trend_uci  = r(ub)
+local trend_p    = r(p)
+
+post `memhold' ///
+("Temperate") ///
+(`base') (`base_lci') (`base_uci') (`base_p') ///
+(`trend') (`trend_lci') (`trend_uci') (`trend_p')
+
+postclose `memhold'
+
+preserve
+
+use CLZ_results_temp.dta, clear
+
+format Base_coef Base_LCI Base_UCI %9.2f
+format Trend Trend_LCI Trend_UCI %9.2f
+
+format Base_p Trend_p %8.4f
+
+order Climate_zone ///
+      Base_coef Base_LCI Base_UCI Base_p ///
+      Trend Trend_LCI Trend_UCI Trend_p
+
+list, clean
+
+export delimited using "R95P_CLZ_results.csv", replace
 
 restore
 

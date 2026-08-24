@@ -13,7 +13,7 @@ library(ggspatial); library(RColorBrewer); library(scales)
 library(ggpubr); library(xlsx); library(readxl)
 library(grid); library(patchwork)
 
-data <- read_parquet("Data/data_prec_final.parquet")
+data <- read_parquet("Data/data_prec_final_wht_polar.parquet")
 
 #--------------------------------------------------
 # Figure 1

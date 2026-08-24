@@ -11,8 +11,6 @@ library(writexl); library(lubridate)
 
 rm(list= ls())
 
-setwd("C:/Users/saral/Desktop/SALURBAL-CLIMATE/SALURBAL-C/MS278")
-
 data_long <- read.csv("Data/2026_03_02/data/L1AD_LONG_20260302.csv")
 city_center <- read.csv("Data/2026_03_02/data/PRCANNUAL_L1CC_20251105.CSV")
 
@@ -161,8 +159,7 @@ data_prec_new <- data_prec_new %>%
 # 9. Add a column of pop 2000 data only (year 2000 as constant) for each SALID1
 data_prec_new <- data_prec_new %>%
   group_by(SALID1) %>%
-  mutate(
-    pop_2000 = total_pop[YEAR == 2000][1]) %>%
+  mutate(pop_2000 = total_pop[YEAR == 2000][1]) %>%
   ungroup()
 
 # 10. Calculate annual number of days above the 95 percentile for pop exposed
@@ -187,9 +184,19 @@ annual_pre95p <- prec_95p %>%
 data_final <- data_prec_new %>% 
   left_join(annual_pre95p, by = c("SALID1" = "SALID1", "YEAR" = "year"))
 
+#12. remove city with polar climate
+data_final_wp <- data_final %>%
+  filter(CLZ != "Polar")
+
+data_final_wp %>%
+  group_by(CLZ) %>%
+  summarise(n_L1AD = n_distinct(SALID1))
+
+length(unique(data_final_wp$SALID1))
+
 # export final dataset parquet
-write_parquet(data_final, "Data/data_prec_final.parquet")
+write_parquet(data_final_wp, "Data/data_prec_final_wht_polar.parquet")
 
 # export excel for stata
-write_xlsx(data_final, "Data/data_prec_final.xlsx")
+write_xlsx(data_final_wp, "Data/data_prec_final_wht_polar.xlsx")
 

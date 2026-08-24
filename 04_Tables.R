@@ -1,5 +1,5 @@
 ##################################################################
-# MS278: Precipitation descriptive - city center point
+# MS278: Precipitation descriptive
 #
 # Manuscript tables
 ##################################################################
@@ -8,12 +8,10 @@ library(readr); library(dplyr); library(tidyverse)
 library(purrr); library(writexl); library(tidyr)
 library(arrow); library(glue)
 
-rm(list= ls())
-
 #--------------------------------------------------
 # Table 1
 #--------------------------------------------------
-data <- read_parquet("Data/data_prec_final.parquet")
+data <- read_parquet("Data/data_prec_final_wht_polar.parquet")
 
 str(data)
 
@@ -22,17 +20,14 @@ data <- data %>%
   mutate(
     GDP = GDP / 1000,
     pop_density_guf = pop_density_guf / 1000,
-    pop_over65 = pop_over65 * 100
-  )
+    pop_over65 = pop_over65 * 100)
 
 # 3. Function to add total
 add_total <- function(data, summary_expr, value_name) {
   
   by_country <- data %>%
     summarize(
-      !!value_name := {{ summary_expr }},
-      .by = Country
-    )
+      !!value_name := {{ summary_expr }},.by = Country)
   
   total <- data %>%
     summarize(
@@ -42,30 +37,29 @@ add_total <- function(data, summary_expr, value_name) {
   bind_rows(by_country, total) %>%
     pivot_wider(
       names_from = Country,
-      values_from = !!sym(value_name)
-    )
+      values_from = !!sym(value_name))
 }
 
 # 4. Convert columns to character
+to_char <- function(df) {
+  df %>% mutate(across(everything(), as.character))
+}
+
 add_total <- function(data, summary_expr, value_name) {
   
   by_country <- data %>%
     summarize(
-      !!value_name := {{ summary_expr }},
-      .by = Country
-    )
+      !!value_name := {{ summary_expr }},.by = Country)
   
   total <- data %>%
     summarize(
-      !!value_name := {{ summary_expr }}
-    ) %>%
+      !!value_name := {{ summary_expr }}) %>%
     mutate(Country = "Total")
   
   bind_rows(by_country, total) %>%
     pivot_wider(
       names_from = Country,
-      values_from = !!sym(value_name)
-    )
+      values_from = !!sym(value_name))
 }
 
 # 5. Number of cities
@@ -89,11 +83,10 @@ city_level <- data %>%
     GDP = mean(GDP, na.rm = TRUE),
     education = mean(education, na.rm = TRUE),
     NDVI = mean(NDVI, na.rm = TRUE),
-    median_elevation = first(median_elevation),
-    slope = first(slope),
+    median_elevation = mean(median_elevation),
+    slope = mean(slope),
     coastal = first(coastal),
-    CLZ = first(CLZ),.groups = "drop"
-  )
+    CLZ = first(CLZ),.groups = "drop")
 
 # 7. Annual precipitation indices
 table_1e <- bind_rows(
@@ -130,8 +123,7 @@ var <- c(
   "education",
   "NDVI",
   "median_elevation",
-  "slope"
-)
+  "slope")
 
 result_list <- lapply(var, function(v) {
   
@@ -142,25 +134,21 @@ result_list <- lapply(var, function(v) {
     summarise(
       med = median(.data[[v]], na.rm = TRUE),
       p10 = quantile(.data[[v]], 0.1, na.rm = TRUE),
-      p90 = quantile(.data[[v]], 0.9, na.rm = TRUE),
-      .groups = "drop"
-    )
+      p90 = quantile(.data[[v]], 0.9, na.rm = TRUE),.groups = "drop")
   
   total <- city_level %>%
     summarise(
       Country = "Total",
       med = median(.data[[v]], na.rm = TRUE),
       p10 = quantile(.data[[v]], 0.1, na.rm = TRUE),
-      p90 = quantile(.data[[v]], 0.9, na.rm = TRUE)
-    )
+      p90 = quantile(.data[[v]], 0.9, na.rm = TRUE))
   
   bind_rows(by_country, total) %>%
     mutate(
       formatted = glue(
         "{format(round(med, decimals), nsmall = decimals)} ",
         "({format(round(p10, decimals), nsmall = decimals)}, ",
-        "{format(round(p90, decimals), nsmall = decimals)})"
-      )) %>%
+        "{format(round(p90, decimals), nsmall = decimals)})")) %>%
     select(Country, formatted) %>%
     pivot_wider(
       names_from = Country,
@@ -217,9 +205,7 @@ table1 <- bind_rows(
   table_1b,
   table_1g,
   table_1h,
-  table_1d
-)
-
+  table_1d)
 
 # 13. Variable labels
 var_labels <- c(
@@ -235,36 +221,31 @@ var_labels <- c(
   NDVI = "Greenness - NDVI",
   median_elevation = "Elevation (m)",
   slope = "Slope (°)",
-  coastal = "Coastal cities (n of cities)"
-)
+  coastal = "Coastal cities (n of cities)")
 
 table1_names <- table1 %>%
   mutate(
-    variables = dplyr::recode(variables, !!!as.list(var_labels))
-  )
+    variables = dplyr::recode(variables, !!!as.list(var_labels)))
 
 # 14. Add section headers
 table1_names <- table1_names %>%
   add_row(
     variables = "City social and environmental characteristics*",
-    .before = which(table1_names$variables == "City population (thousands)")
-  )
+    .before = which(table1_names$variables == "City population (thousands)"))
 
 table1_names <- table1_names %>%
   add_row(
     variables = "Climate zones (% of cities)",
     .before = which(
       table1_names$variables %in% unique(table_1d$variables)
-    )[1]
-  )
+    )[1])
 
 # 15. Add footnote
 col_1 <- names(table1_names)[1]
 
 table1_names <- table1_names %>%
   add_row(
-    !!col_1 := "* Values represent the median (10th, 90th percentiles) of city-specific averages across the study period (2000–2024)"
-  )
+    !!col_1 := "* Values represent the median (10th, 90th percentiles) of city-specific averages across the study period (2000–2024)")
 
 # 16. Organize columns
 table1_names <- table1_names %>%
@@ -365,13 +346,12 @@ univariate_join_clz <- list(clz_R95P,
   reduce(full_join, by = "variable") %>% 
   mutate(variable = case_when(
     variable == "1.CLZ_num" ~ "Arid",
-    variable == "2.CLZ_num" ~ "Polar",
-    variable == "3.CLZ_num" ~ "Temperate",
-    variable == "4b.CLZ_num" ~ "Tropical", 
+    variable == "2.CLZ_num" ~ "Temperate",
+    variable == "3b.CLZ_num" ~ "Tropical", 
     TRUE ~ variable)) %>% 
   mutate(across(-variable, ~ ifelse(variable == "Tropical", "Reference", .))) %>% 
   mutate(variable = factor(variable,
-                           levels = c("Tropical", "Arid", "Temperate", "Polar"))) %>%
+                           levels = c("Tropical", "Arid", "Temperate"))) %>%
   arrange(variable)
 
 # 3. Final join - table 2
@@ -393,7 +373,6 @@ table2 <- table2 %>%
                                       "Coastal cities vs non coastal citiesd",
                                       "Tropical",
                                       "Arid",
-                                      "Polar",
                                       "Temperate"))) %>%
   arrange(variable) %>% 
   mutate(variable = as.character(variable))
@@ -402,12 +381,16 @@ table2 <- table2 %>%
   mutate(R95P = ifelse(R95P == "Reference", "Reference category",R95P))
 
 # line for climate zone
-climate_row <- table2[1, ] %>% 
-  mutate(across(everything(), ~ "")) %>%
-  mutate(variable = "Climate Zoned")
+climate_row <- table2[1, ]
+climate_row[] <- ""
+climate_row$variable <- "Climate Zoned"
+
 pos <- which(table2$variable == "Tropical")[1]
-table2 <- bind_rows(table2[1:(pos - 1), ],
-                    climate_row, table2[pos:nrow(table2), ])
+
+table2 <- rbind(
+  table2[1:(pos - 1), , drop = FALSE],
+  climate_row,
+  table2[pos:nrow(table2), , drop = FALSE])
 
 # note an export
 note_row <- tibble(
@@ -417,8 +400,7 @@ note_row <- tibble(
     "b time-varying variable with interpolation between census years and last observation carried forward;\n",
     "c time-varying variable with last observation carried forward for years without data availability;\n",
     "d time-invariant variable;\n",
-    "Mean differences are per SD higher value of the city-level predictor unless otherwise noted.\n")
-)
+    "Mean differences are per SD higher value of the city-level predictor unless otherwise noted.\n"))
 
 table2_final <- bind_rows(table2, note_row) %>% 
   rename("  " = "variable")
@@ -432,62 +414,73 @@ table2_final <- table2_final %>%
 write_xlsx(table2_final, "Tables/Table_2.xlsx")
 
 #--------------------------------------------------
-# Table 3 - climate zones baseline and interaction
+# Table 3 - climate zones baseline and trend
 #--------------------------------------------------
-# 1. baseline and interaction - no control
-clz_R95P_int <- read_csv("Model_results/L1AD/R95P/R95P_CLZ_interaction.csv")
-clz_Rx1day_int <- read_csv("Model_results/L1AD/Rx1day/Rx1day_CLZ_interaction.csv")
-clz_Rx5day_int <- read_csv("Model_results/L1AD/Rx5day/Rx5day_CLZ_interaction.csv")
+# 1. baseline and trend
+clz_R95P_int <- read_csv("Model_results/L1AD/R95P/R95P_CLZ_results.csv")
+clz_Rx1day_int <- read_csv("Model_results/L1AD/Rx1day/Rx1day_CLZ_results.csv")
+clz_Rx5day_int <- read_csv("Model_results/L1AD/Rx5day/Rx5day_CLZ_results.csv")
 
 format_clz_interaction <- function(data, value_name){
+  
   data %>%
-    filter(grepl("YEAR_dec", parm)) %>%
-    mutate(parm = ifelse(parm == "YEAR_dec",
-                         "4b.CLZ_num#c.YEAR_dec",
-                         parm)) %>%
-    mutate(sig = ifelse(!is.na(p) & p < 0.05, "*", "")) %>%
-    mutate(value = sprintf("%.1f (%.1f, %.1f)%s",
-                           estimate, min95, max95, sig)) %>%
-    mutate(clz = case_when(
-      grepl("^1\\.CLZ_num", parm)  ~ "1.CLZ_num",
-      grepl("^2\\.CLZ_num", parm)  ~ "2.CLZ_num",
-      grepl("^3\\.CLZ_num", parm)  ~ "3.CLZ_num",
-      grepl("^4b\\.CLZ_num", parm) ~ "4b.CLZ_num")) %>%
-    select(clz, value) %>%
-    distinct(clz, .keep_all = TRUE) %>%
-    mutate(clz = recode(clz,
-                        "1.CLZ_num"  = "Arid",
-                        "2.CLZ_num"  = "Polar",
-                        "3.CLZ_num"  = "Temperate",
-                        "4b.CLZ_num" = "Tropical")) %>%
-    mutate(clz = factor(clz,
-                        levels = c("Tropical",
-                                   "Arid",
-                                   "Temperate",
-                                   "Polar"))) %>%
-    arrange(clz) %>%
-    mutate(clz = as.character(clz)) %>%
-    rename(!!value_name := value)
+    mutate(
+      sig = ifelse(!is.na(Trend_p) & Trend_p < 0.05, "*", ""),
+      value = sprintf("%.1f (%.1f, %.1f)%s",
+                      Trend,
+                      Trend_LCI,
+                      Trend_UCI,
+                      sig)) %>%
+    mutate(Climate_zone = factor(Climate_zone,
+                                 levels = c("Tropical", "Arid", "Temperate"))) %>%
+    arrange(Climate_zone) %>%
+    mutate(Climate_zone = as.character(Climate_zone)) %>%
+    select(Climate_zone, value) %>%
+    rename(clz = Climate_zone,
+      !!value_name := value)
 }
 
 # table for each
-clz_R95P_int_p   <- format_clz_interaction(clz_R95P_int, "R95P")
-clz_Rx1day_int_p <- format_clz_interaction(clz_Rx1day_int, "Rx1day")
-clz_Rx5day_int_p <- format_clz_interaction(clz_Rx5day_int, "Rx5day")
+clz_R95P_int_trend  <- format_clz_interaction(clz_R95P_int, "R95P")
+clz_Rx1day_int_trend <- format_clz_interaction(clz_Rx1day_int, "Rx1day")
+clz_Rx5day_int_trend <- format_clz_interaction(clz_Rx5day_int, "Rx5day")
 
-# 2.  p values of interaction (results from stata)
-clz_R95P_int_p <- clz_R95P_int_p %>%
-  add_row(clz = "p-value for interaction", R95P = "<0.001")
-
-clz_Rx1day_int_p <- clz_Rx1day_int_p %>%
-  add_row(clz = "p-value for interaction", Rx1day = "<0.001")
-
-clz_Rx5day_int_p <- clz_Rx5day_int_p %>%
-  add_row(clz = "p-value for interaction", Rx5day = "<0.001")
-
-# 3. join tables and organize
-table_3 <- list(clz_R95P_int_p, clz_Rx1day_int_p, clz_Rx5day_int_p) %>%
+# join
+clz_trend <- list(clz_R95P_int_trend, clz_Rx1day_int_trend, clz_Rx5day_int_trend) %>%
   reduce(left_join, by = "clz")
+
+# 2.  p values of interaction
+clz_R95P_p <- read_csv("Model_results/L1AD/R95P/R95P_CLZ_interaction_test.csv")
+clz_Rx1day_p <- read_csv("Model_results/L1AD/Rx1day/Rx1day_CLZ_interaction_test.csv")
+clz_Rx5day_p <- read_csv("Model_results/L1AD/Rx5day/Rx5day_CLZ_interaction_test.csv")
+
+clz_R95P_p <- clz_R95P_p %>%
+  rename(R95P = p) %>%
+  mutate(clz = "p-value for interaction") %>%
+  select(clz, R95P)
+
+clz_Rx1day_p <- clz_Rx1day_p %>%
+  rename(Rx1day = p) %>%
+  mutate(clz = "p-value for interaction") %>%
+  select(clz, Rx1day)
+
+clz_Rx5day_p <- clz_Rx5day_p %>%
+  rename(Rx5day = p) %>%
+  mutate(clz = "p-value for interaction") %>%
+  select(clz, Rx5day)
+
+# join p test
+p_test <- clz_R95P_p %>% 
+  full_join(clz_Rx1day_p, by = "clz") %>%
+  full_join(clz_Rx5day_p, by = "clz") %>%
+  mutate(across(c(R95P, Rx1day, Rx5day),
+                ~ case_when(. < 0.0001 ~ "<0.0001",
+                            . < 0.001  ~ "<0.001",
+                            . < 0.01   ~ "<0.01",
+                            . < 0.05   ~ "<0.05",
+                            TRUE ~ sprintf("%.3f", .))))
+# 3. join tables and organize
+table_3 <- bind_rows(clz_trend, p_test)
 
 table_3 <- table_3 %>%
   rename("Mean changes over time (95% CI) - R95p" = R95P,

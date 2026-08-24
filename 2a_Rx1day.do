@@ -1,11 +1,11 @@
-cd "C:\Users\saral\Desktop\SALURBAL-CLIMATE\SALURBAL-C\MS278\Model_results\City_center\Rx5dayCC"
+cd "C:\Users\saral\Desktop\SALURBAL-CLIMATE\SALURBAL-C\MS278\Model_results\L1AD\Rx1day"
 
 import excel "C:\Users\saral\Desktop\SALURBAL-CLIMATE\SALURBAL-C\MS278\Data\data_prec_final_wht_polar.xlsx", sheet("Sheet1") firstrow
 
 ****************************************************
 * 1. Null model
 ****************************************************
-mixed Rx5dayCC || SALID1:, vce(robust)
+mixed Rx1day || SALID1:, vce(robust)
 
 estat recovariance
 matrix C = r(Cov2)
@@ -24,7 +24,7 @@ preserve
 clear
 set obs 1
 
-gen str10 Index = "Rx5dayCC"
+gen str10 Index = "Rx1day"
 
 gen double Between = var_between
 
@@ -39,7 +39,7 @@ format ICC_pct %15.4f
 list, noobs clean
 
 * Export
-export excel using "Rx5dayCC_null_variance.xlsx", replace firstrow(variables)
+export excel using "Rx1day_null_variance.xlsx", replace firstrow(variables)
 
 restore
 
@@ -47,14 +47,14 @@ restore
 * 2. Add year as fixed effect - linear
 *******************************************************
 * linear
-mixed Rx5dayCC c.YEAR_dec || SALID1: c.YEAR_dec, vce(robust)
+mixed Rx1day c.YEAR_dec || SALID1: c.YEAR_dec, vce(robust)
 predict linear_model, xb
 est store linear_model
 
 ****************************************************
 * 3. Model plus time - linear - get random slope
 ****************************************************
-mixed Rx5dayCC c.YEAR_dec || SALID1: c.YEAR_dec, vce(robust)
+mixed Rx1day c.YEAR_dec || SALID1: c.YEAR_dec, vce(robust)
 estat icc
 
 * Extract random effects
@@ -77,8 +77,8 @@ keep SALID1 slope_re intercept_re slope_total
 bysort SALID1: keep if _n == 1
 
 * Export
-export excel using "Rx5dayCC_city_random_slopes.xlsx", replace firstrow(variables)
-export delimited using "Rx5dayCC_city_random_slopes.csv", replace
+export excel using "Rx1day_city_random_slopes.xlsx", replace firstrow(variables)
+export delimited using "Rx1day_city_random_slopes.csv", replace
 
 restore
 
@@ -98,7 +98,7 @@ preserve
     local vars elevation_z slope_z coastal total_pop_z pop_density_guf_z pop_over65_z GDP_z NDVI_z education_z
 
     foreach v of local vars {
-        mixed Rx5dayCC `v' c.YEAR_dec || SALID1: c.YEAR_dec, vce(robust)
+        mixed Rx1day `v' c.YEAR_dec || SALID1: c.YEAR_dec, vce(robust)
         
         // Captura os resultados diretamente
         matrix b = e(b)
@@ -113,13 +113,13 @@ preserve
         local z = abs(`estimate'/`se')
         local p = 2 * (1 - normal(`z'))
         
-        post `memhold' ("Rx5dayCC") ("`v'") (`estimate') (`min95') (`max95') (`p')
+        post `memhold' ("Rx1day") ("`v'") (`estimate') (`min95') (`max95') (`p')
     }
 
     postclose `memhold'
     
     use `results', clear
-    export delimited using "Rx5dayCC_univariate.csv", replace
+    export delimited using "Rx1day_univariate.csv", replace
 
 restore
 
@@ -130,28 +130,28 @@ label list CLZ_num
 
 preserve
 
-    mixed Rx5dayCC ib3.CLZ_num c.YEAR_dec || SALID1: c.YEAR_dec, vce(robust)
+    mixed Rx1day ib3.CLZ_num c.YEAR_dec || SALID1: c.YEAR_dec, vce(robust)
 
     parmest, norestore level(95)
-    export delimited using "Rx5dayCC_CLZ.csv", replace
+    export delimited using "Rx1day_CLZ.csv", replace
 
 restore
 
 ****************************************************
 * 5. Climate zones - interaction term
 ****************************************************
-mixed Rx5dayCC ib3.CLZ_num##c.YEAR_dec || SALID1: c.YEAR_dec, vce(robust)
+mixed Rx1day ib3.CLZ_num##c.YEAR_dec || SALID1: c.YEAR_dec, vce(robust)
 
 preserve
 
 parmest, norestore level(95)
 
-*export delimited using "Rx5dayCC_CLZ_interaction_coefficients.csv", replace
+*export delimited using "Rx1day_CLZ_interaction_coefficients.csv", replace
 
 restore
 
 * 5.1. Global test of interaction
-mixed Rx5dayCC ib3.CLZ_num##c.YEAR_dec || SALID1: c.YEAR_dec, vce(robust)
+mixed Rx1day ib3.CLZ_num##c.YEAR_dec || SALID1: c.YEAR_dec, vce(robust)
 
 testparm i.CLZ_num#c.YEAR_dec
 
@@ -173,7 +173,7 @@ format chi2 %9.3f
 format df %9.0f
 format p %9.4f
 
-export delimited using "Rx5dayCC_CLZ_interaction_test.csv", replace
+export delimited using "Rx1day_CLZ_interaction_test.csv", replace
 
 restore
 
@@ -255,7 +255,7 @@ order Climate_zone ///
 
 list, clean
 
-export delimited using "Rx5dayCC_CLZ_results.csv", replace
+export delimited using "Rx1day_CLZ_results.csv", replace
 
 restore
 
@@ -280,7 +280,7 @@ local hybrids total_pop pop_density_guf pop_over65 GDP NDVI education
 
 foreach var in `hybrids' {
 
-    mixed Rx5dayCC ///
+    mixed Rx1day ///
         `var'_wht_z ///
         `var'_btw_z ///
         c.YEAR_dec ///
@@ -317,7 +317,7 @@ foreach var in `hybrids' {
     local p = 2*(1 - normal(`z'))
 
     post `memhold' ///
-        ("Rx5dayCC") ("within") ("`var'") ///
+        ("Rx1day") ("within") ("`var'") ///
         (`estimate') (`min95') (`max95') (`p') ///
         (`slope') (`slope_min95') (`slope_max95') (`slope_p')
 
@@ -332,7 +332,7 @@ foreach var in `hybrids' {
     local p = 2*(1 - normal(`z'))
 
     post `memhold' ///
-        ("Rx5dayCC") ("between") ("`var'") ///
+        ("Rx1day") ("between") ("`var'") ///
         (`estimate') (`min95') (`max95') (`p') ///
         (`slope') (`slope_min95') (`slope_max95') (`slope_p')
 }
@@ -340,6 +340,6 @@ foreach var in `hybrids' {
 postclose `memhold'
 
 use `results', clear
-export delimited using "Rx5dayCC_hybrid_models_with_slope.csv", replace
+export delimited using "Rx1day_hybrid_models_with_slope.csv", replace
 
 restore

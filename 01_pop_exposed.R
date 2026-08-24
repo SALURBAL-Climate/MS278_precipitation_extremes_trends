@@ -9,9 +9,7 @@
 library(tidyverse); library(dplyr); library(arrow)
 library(tidyr); library(writexl)
 
-rm(list= ls())
-
-data <- read_parquet("Data/data_prec_final.parquet")
+data <- read_parquet("Data/data_prec_final_wht_polar.parquet")
 
 #-----------------------------------------------------------
 # Annual population exposed to extreme precipitation

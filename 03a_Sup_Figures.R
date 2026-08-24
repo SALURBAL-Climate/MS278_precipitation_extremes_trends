@@ -197,7 +197,7 @@ ggsave("Figures/Sup_Figure_1.png", Sup_Figure1,
 #--------------------------------------------------
 # Sup Figure 2
 #--------------------------------------------------
-data <- read_parquet("Data/data_prec_final.parquet")
+data <- read_parquet("Data/data_prec_final_wht_polar.parquet")
 
 Sup_Figure_2a <- data %>%
   ggplot() +
@@ -507,7 +507,7 @@ sup_fig5 <- ggplot(annual_total_long,
   geom_smooth(method = "loess",
               se = TRUE,
               span = 0.5,
-              size = 1.2,
+              linewidth = 1.2,
               alpha = 0.2) +
   scale_color_manual(values = c("Fixed population (2000)" = "#6baed6",
                                 "Population (2000-2024)" = "#08519c")) +
@@ -590,4 +590,3 @@ Sup_fig_6
 
 ggsave("Figures/Sup_Figure_6.png", plot = Sup_fig_6, 
        width = 22, height = 14, dpi = 300, bg = "white")
-
