@@ -1,6 +1,11 @@
-cd "C:\Users\saral\Desktop\SALURBAL-CLIMATE\SALURBAL-C\MS278\Model_results\L1AD\Rx1day"
+cd "C:\Users\saral\Desktop\SALURBAL-CLIMATE\SALURBAL-C\MS278"
+pwd
 
-import excel "C:\Users\saral\Desktop\SALURBAL-CLIMATE\SALURBAL-C\MS278\Data\data_prec_final_wht_polar.xlsx", sheet("Sheet1") firstrow
+global root "."
+
+capture mkdir "${root}/Model_results/L1AD/Rx1day"
+
+import excel "Data\data_prec_final_wht_polar.xlsx", sheet("Sheet1") firstrow
 
 ****************************************************
 * 1. Null model
@@ -39,7 +44,7 @@ format ICC_pct %15.4f
 list, noobs clean
 
 * Export
-export excel using "Rx1day_null_variance.xlsx", replace firstrow(variables)
+export excel using "Model_results/L1AD/Rx1day/Rx1day_null_variance.xlsx", replace firstrow(variables)
 
 restore
 
@@ -57,7 +62,20 @@ est store linear_model
 mixed Rx1day c.YEAR_dec || SALID1: c.YEAR_dec, vce(robust)
 estat icc
 
-* Extract random effects
+* 3.1 Overall time trend
+preserve
+
+parmest, norestore level(95)
+
+keep if parm == "YEAR_dec"
+
+keep parm estimate min95 max95 p
+
+export delimited using "Model_results/L1AD/Rx1day/Rx1day_overall_trend.csv", replace
+
+restore
+
+* 3.2 Extract random effects and export city-specific slopes
 predict double re1 re2, reffects
 
 * check order
@@ -77,8 +95,8 @@ keep SALID1 slope_re intercept_re slope_total
 bysort SALID1: keep if _n == 1
 
 * Export
-export excel using "Rx1day_city_random_slopes.xlsx", replace firstrow(variables)
-export delimited using "Rx1day_city_random_slopes.csv", replace
+export excel using "Model_results/L1AD/Rx1day/Rx1day_city_random_slopes.xlsx", replace firstrow(variables)
+export delimited using "Model_results/L1AD/Rx1day/Rx1day_city_random_slopes.csv", replace
 
 restore
 
@@ -119,7 +137,7 @@ preserve
     postclose `memhold'
     
     use `results', clear
-    export delimited using "Rx1day_univariate.csv", replace
+    export delimited using "Model_results/L1AD/Rx1day/Rx1day_univariate.csv", replace
 
 restore
 
@@ -133,7 +151,7 @@ preserve
     mixed Rx1day ib3.CLZ_num c.YEAR_dec || SALID1: c.YEAR_dec, vce(robust)
 
     parmest, norestore level(95)
-    export delimited using "Rx1day_CLZ.csv", replace
+    export delimited using "Model_results/L1AD/Rx1day/Rx1day_CLZ.csv", replace
 
 restore
 
@@ -173,7 +191,7 @@ format chi2 %9.3f
 format df %9.0f
 format p %9.4f
 
-export delimited using "Rx1day_CLZ_interaction_test.csv", replace
+export delimited using "Model_results/L1AD/Rx1day/Rx1day_CLZ_interaction_test.csv", replace
 
 restore
 
@@ -255,7 +273,7 @@ order Climate_zone ///
 
 list, clean
 
-export delimited using "Rx1day_CLZ_results.csv", replace
+export delimited using "Model_results/L1AD/Rx1day/Rx1day_CLZ_results.csv", replace
 
 restore
 
@@ -340,6 +358,6 @@ foreach var in `hybrids' {
 postclose `memhold'
 
 use `results', clear
-export delimited using "Rx1day_hybrid_models_with_slope.csv", replace
+export delimited using "Model_results/L1AD/Rx1day/Rx1day_hybrid_models_with_slope.csv", replace
 
 restore

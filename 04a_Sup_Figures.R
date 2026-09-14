@@ -13,6 +13,8 @@ library(ggspatial); library(RColorBrewer); library(scales)
 library(ggpubr); library(xlsx); library(readxl)
 library(grid); library(patchwork)
 
+set.seed(1234)
+
 #--------------------------------------------------
 # Sup Figure 1
 #--------------------------------------------------
@@ -53,15 +55,17 @@ data_sf <- st_as_sf(data_map)
 # R95PCC map
 rdylbu <- RColorBrewer::brewer.pal(11, "RdYlBu")
 
+range(data_sf$R95PCC, na.rm = TRUE)
+
 R95PCC_slope <- ggplot() +
   geom_sf(data = shp_base, fill = "#bdbdbd", color = "#bdbdbd", linewidth = 0.3) +
   geom_sf(data = shp_SALURBAL_countries, fill = "white", color = "#bdbdbd", linewidth = 0.3) +
   geom_sf(data = data_sf, aes(fill = R95PCC), shape = 21, color = "#4d4d4d", size = 2, stroke = 0.3) +          
   scale_fill_gradientn(colours = rdylbu,
-                       values = rescale(c(-85, -1, 0, 1, 144)),
-                       limits = c(-85, 144),
+                       values = rescale(c(-99, -1, 0, 1, 231)),
+                       limits = c(-99, 231),
                        oob = squish,
-                       name = "R95p (mm)") +
+                       name = "R95p (mm) - City center") +
   ggtitle("A") +
   theme_minimal() +
   theme(plot.title = element_text(hjust = 0, face = "bold", size = 16),
@@ -98,15 +102,17 @@ R95PCC_slope <- ggplot() +
 R95PCC_slope
 
 # Rx1dayCC
+range(data_sf$Rx1dayCC, na.rm = TRUE)
+
 Rx1dayCC_slope <- ggplot() +
   geom_sf(data = shp_base, fill = "#bdbdbd", color = "#bdbdbd", linewidth = 0.3) +
   geom_sf(data = shp_SALURBAL_countries, fill = "white", color = "#bdbdbd", linewidth = 0.3) +
   geom_sf(data = data_sf, aes(fill = Rx1dayCC), shape = 21, color = "#4d4d4d", size = 2, stroke = 0.3) +          
   scale_fill_gradientn(colours = rdylbu,
-                       values = rescale(c(-9, -1, 0, 1, 10)),
-                       limits = c(-9, 10),
+                       values = rescale(c(-11, -1, 0, 1, 14)),
+                       limits = c(-11, 14),
                        oob = squish,
-                       name = "RX1day (mm)") +
+                       name = "RX1day (mm) - City center") +
   ggtitle("B") +
   theme_minimal() +
   theme(plot.title = element_text(hjust = 0, face = "bold", size = 16),
@@ -143,15 +149,17 @@ Rx1dayCC_slope <- ggplot() +
 Rx1dayCC_slope
 
 # Rx5dayCC
+range(data_sf$Rx5dayCC, na.rm = TRUE)
+
 Rx5dayCC_slope <- ggplot() +
   geom_sf(data = shp_base, fill = "#bdbdbd", color = "#bdbdbd", linewidth = 0.3) +
   geom_sf(data = shp_SALURBAL_countries, fill = "white", color = "#bdbdbd", linewidth = 0.3) +
   geom_sf(data = data_sf, aes(fill = Rx5dayCC), shape = 21, color = "#4d4d4d", size = 2, stroke = 0.3) +          
   scale_fill_gradientn(colours = rdylbu,
-                       values = rescale(c(-17, -1, 0, 1, 23)),
-                       limits = c(-17, 23),
+                       values = rescale(c(-18, -1, 0, 1, 27)),
+                       limits = c(-18, 27),
                        oob = squish,
-                       name = "RX5day (mm)") +
+                       name = "RX5day (mm) - City center") +
   ggtitle("C") +
   theme_minimal() +
   theme(plot.title = element_text(hjust = 0, face = "bold", size = 16),
@@ -201,9 +209,9 @@ data <- read_parquet("Data/data_prec_final_wht_polar.parquet")
 
 Sup_Figure_2a <- data %>%
   ggplot() +
-  geom_jitter(aes(x = CLZ, y = R95PCC),
+  geom_jitter(aes(x = CLZ, y = R95P),
               color = "#9ecae1", width = 0.2, na.rm = TRUE, size = 1, height = 0.8, alpha = 0.6) +
-  geom_boxplot(aes(x = CLZ, y = R95PCC),
+  geom_boxplot(aes(x = CLZ, y = R95P),
                color = "#252525", fill = NA, linewidth = 0.6, width = 0.6, outlier.shape = NA) +
   theme_classic() +
   theme(plot.title = element_text(size = 18, face = "bold"),
@@ -214,14 +222,14 @@ Sup_Figure_2a <- data %>%
         legend.position = "none") +
   labs(title = "A") +
   xlab("") +
-  ylab("R95PCC (mm)")
+  ylab("R95p (mm)")
 Sup_Figure_2a
 
 Sup_Figure_2b <- data %>%
   ggplot() +
-  geom_jitter(aes(x = CLZ, y = Rx1dayCC),
+  geom_jitter(aes(x = CLZ, y = Rx1day),
               color = "#4292c6", width = 0.2, na.rm = TRUE, size = 1, height = 0.8, alpha = 0.6) +
-  geom_boxplot(aes(x = CLZ, y = Rx1dayCC),
+  geom_boxplot(aes(x = CLZ, y = Rx1day),
                color = "#252525", fill = NA, linewidth = 0.6, width = 0.6, outlier.shape = NA) +
   theme_classic() +
   theme(plot.title = element_text(size = 18, face = "bold"),
@@ -232,14 +240,14 @@ Sup_Figure_2b <- data %>%
         legend.position = "none") +
   labs(title = "B") +
   xlab("") +
-  ylab("Rx1dayCC (mm)")
+  ylab("Rx1day (mm)")
 Sup_Figure_2b
 
 Sup_Figure_2c <- data %>%
   ggplot() +
-  geom_jitter(aes(x = CLZ, y = Rx5dayCC),
+  geom_jitter(aes(x = CLZ, y = Rx5day),
               color = "#08519c", width = 0.2, na.rm = TRUE, size = 1, height = 0.8, alpha = 0.6) +
-  geom_boxplot(aes(x = CLZ, y = Rx5dayCC),
+  geom_boxplot(aes(x = CLZ, y = Rx5day),
                color = "#252525", fill = NA, linewidth = 0.6, width = 0.6, outlier.shape = NA) +
   theme_classic() +
   theme(plot.title = element_text(size = 18, face = "bold"),
@@ -250,7 +258,7 @@ Sup_Figure_2c <- data %>%
         legend.position = "none") +
   labs(title = "C") +
   xlab("") +
-  ylab("Rx5dayCC (mm)")
+  ylab("RX5day (mm)")
 Sup_Figure_2c
 
 Sup_Figure_2 <- (Sup_Figure_2a) / (Sup_Figure_2b)  / (Sup_Figure_2c)
@@ -264,20 +272,20 @@ ggsave("Figures/Sup_Figure_2.png", plot = Sup_Figure_2,
 #--------------------------------------------------
 df_CLZ_avg <- data %>%
   group_by(CLZ, YEAR) %>%
-  summarize(mean_R95PCC = mean(R95PCC, na.rm = TRUE),
-            mean_Rx1dayCC = mean(Rx1dayCC, na.rm = TRUE),
-            mean_Rx5dayCC = mean(Rx5dayCC, na.rm = TRUE),.groups = "drop")
+  summarize(mean_R95P = mean(R95P, na.rm = TRUE),
+            mean_Rx1day = mean(Rx1day, na.rm = TRUE),
+            mean_Rx5day = mean(Rx5day, na.rm = TRUE),.groups = "drop")
 
 Sup_Figure_3a <- ggplot() +
-  geom_line(data = data, aes(x = YEAR, y = R95PCC, group = SALID1), 
+  geom_line(data = data, aes(x = YEAR, y = R95P, group = SALID1), 
             color = "#4292c6", alpha = 0.4) +
-  geom_line(data = df_CLZ_avg, aes(x = YEAR, y = mean_R95PCC), 
+  geom_line(data = df_CLZ_avg, aes(x = YEAR, y = mean_R95P), 
             color = "red", linewidth = 0.8) +
   facet_wrap(~CLZ, ncol = 7) +  
   coord_cartesian(ylim = c(0, 2280)) +
   labs(title = "A",
        x = "Year",
-       y = "R95PCC (mm)") +
+       y = "R95p (mm)") +
   theme_bw(base_size = 16) +
   theme(
     strip.background = element_rect(fill = "white", color = "black", linewidth = 0.4),
@@ -292,15 +300,15 @@ Sup_Figure_3a <- ggplot() +
 Sup_Figure_3a
 
 Sup_Figure_3b <- ggplot() +
-  geom_line(data = data, aes(x = YEAR, y = Rx1dayCC, group = SALID1), 
+  geom_line(data = data, aes(x = YEAR, y = Rx1day, group = SALID1), 
             color = "#4292c6", alpha = 0.4) +
-  geom_line(data = df_CLZ_avg, aes(x = YEAR, y = mean_Rx1dayCC), 
+  geom_line(data = df_CLZ_avg, aes(x = YEAR, y = mean_Rx1day), 
             color = "red", linewidth = 0.8) +
   facet_wrap(~CLZ, ncol = 7) +  
   coord_cartesian(ylim = c(0, 600)) +
   labs(title = "B",
        x = "Year",
-       y = "Rx1dayCC (mm)") +
+       y = "RX1day (mm)") +
   theme_bw(base_size = 16) +
   theme(
     strip.background = element_rect(fill = "white", color = "black", linewidth = 0.4),
@@ -315,15 +323,15 @@ Sup_Figure_3b <- ggplot() +
 Sup_Figure_3b
 
 Sup_Figure_3c <- ggplot() +
-  geom_line(data = data, aes(x = YEAR, y = Rx5dayCC, group = SALID1), 
+  geom_line(data = data, aes(x = YEAR, y = Rx5day, group = SALID1), 
             color = "#4292c6", alpha = 0.4) +
-  geom_line(data = df_CLZ_avg, aes(x = YEAR, y = mean_Rx5dayCC), 
+  geom_line(data = df_CLZ_avg, aes(x = YEAR, y = mean_Rx5day), 
             color = "red", linewidth = 0.8) +
   facet_wrap(~CLZ, ncol = 7) +  
   coord_cartesian(ylim = c(0, 600)) +
   labs(title = "C",
        x = "Year",
-       y = "Rx5dayCC (mm)") +
+       y = "RX5day (mm)") +
   theme_bw(base_size = 16) +
   theme(
     strip.background = element_rect(fill = "white", color = "black", linewidth = 0.4),
@@ -341,7 +349,7 @@ Sup_Figure_3 <- (Sup_Figure_3a) / (Sup_Figure_3b)  / (Sup_Figure_3c)
 Sup_Figure_3
 
 ggsave("Figures/Sup_Figure_3.png", plot = Sup_Figure_3, 
-       width = 26, height = 14, dpi = 300, bg = "white")
+       width = 20, height = 14, dpi = 300, bg = "white")
 
 #--------------------------------------------------
 # Sup Figure 4
@@ -467,7 +475,7 @@ Rx5day_slope <- ggplot() +
 
 Rx5day_slope
 
-# join maps to figure 3 
+# join maps to figure 4
 Sup_Figure_4 <- (Rx1day_slope) | (Rx5day_slope)
 Sup_Figure_4
 
@@ -477,7 +485,7 @@ ggsave("Figures/Sup_Figure_4.png", Sup_Figure_4,
 #--------------------------------------------------
 # Sup Figure 5
 #--------------------------------------------------
-pop_annual_country <- read_xlsx("pop_annual_country.xlsx")
+pop_annual_country <- read_xlsx("Data/pop_annual_country.xlsx")
 
 annual_total <- pop_annual_country %>%
   summarise(
@@ -590,3 +598,4 @@ Sup_fig_6
 
 ggsave("Figures/Sup_Figure_6.png", plot = Sup_fig_6, 
        width = 22, height = 14, dpi = 300, bg = "white")
+

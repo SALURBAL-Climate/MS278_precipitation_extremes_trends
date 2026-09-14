@@ -7,7 +7,7 @@
 ##################################################################
 
 library(dplyr); library(arrow); library(readxl)
-library(writexl); library(lubridate)
+library(writexl); library(lubridate) library(tidyr)
 
 rm(list= ls())
 
@@ -32,8 +32,7 @@ data_long <- data_long %>%
          BECCOASTL1AD,
          BECELEVATIONMEDIANL1AD,
          BECSLOPEMEDIANL1AD,
-         INCLUDE_NOUNITCHG_L1AD,
-         INCLUDE_NOBDRYCHG_L1AD)
+         INCLUDE_NOUNITCHG_L1AD)
 
 # 2.  Create CLZ varible as names, recode countries and rename some columns
 data_long <- data_long %>%
@@ -105,20 +104,23 @@ length(unique(data_prec_new$SALID1))
 length(unique(data_prec_new$Country))
 colSums(is.na(data_prec_new)) > 0
 
-# 7. Create a column of decade (modelling step)
+# 7. remove city with polar climate
+data_prec_new <- data_prec_new %>%
+  filter(CLZ != "Polar")
+
+data_prec_new %>%
+  group_by(CLZ) %>%
+  summarise(n_L1AD = n_distinct(SALID1))
+
+length(unique(data_prec_new$SALID1))
+
+# 8. Create a column of decade (modelling step)
 # Year by decade
 # center the YEAR (2000 as reference)
 data_prec_new <- data_prec_new %>%
   mutate(YEAR_dec = (YEAR - 2000) / 10)
 
-#cat
-data_prec_new <- data_prec_new %>%
-  mutate(YEAR_cat = cut(YEAR,
-                        breaks = c(2000, 2010, 2020, 2030),
-                        labels = c("2000–2009", "2010–2019", "2020–2024"),
-                        right = FALSE))
-
-# 8. scale variables (modelling step)
+# 9. scale variables (modelling step)
 data_prec_new <- data_prec_new %>% 
   mutate(
     total_pop_z       = as.numeric(scale(total_pop)),
@@ -156,14 +158,14 @@ data_prec_new <- data_prec_new %>%
     NDVI_btw_z            = as.numeric(scale(NDVI_between)),
     NDVI_wht_z            = as.numeric(scale(NDVI_within)))
 
-# 9. Add a column of pop 2000 data only (year 2000 as constant) for each SALID1
+# 10. Add a column of pop 2000 data only (year 2000 as constant) for each SALID1
 data_prec_new <- data_prec_new %>%
   group_by(SALID1) %>%
   mutate(pop_2000 = total_pop[YEAR == 2000][1]) %>%
   ungroup()
 
-# 10. Calculate annual number of days above the 95 percentile for pop exposed
-data_daily <- read.csv("Data/2026_03_02/data/GSMaP_L1_1998_2024.csv")
+# 11. Calculate annual number of days above the 95 percentile for pop exposed
+data_daily <- read.csv("Data/GSMaP_L1_1998_2024.csv")
 
 data_daily <- data_daily %>%
   select(SALID1, date, prec_L1AD) %>% 
@@ -180,23 +182,14 @@ annual_pre95p <- prec_95p %>%
   group_by(SALID1, year) %>%
   summarise(n_extreme_days = sum(extreme, na.rm = TRUE),.groups = "drop")  
   
-# 11. join 
+# 12. join 
 data_final <- data_prec_new %>% 
-  left_join(annual_pre95p, by = c("SALID1" = "SALID1", "YEAR" = "year"))
-
-#12. remove city with polar climate
-data_final_wp <- data_final %>%
-  filter(CLZ != "Polar")
-
-data_final_wp %>%
-  group_by(CLZ) %>%
-  summarise(n_L1AD = n_distinct(SALID1))
-
-length(unique(data_final_wp$SALID1))
+  left_join(annual_pre95p, by = c("SALID1" = "SALID1", "YEAR" = "year"))  %>%  
+  mutate(n_extreme_days = replace_na(n_extreme_days, 0))
 
 # export final dataset parquet
-write_parquet(data_final_wp, "Data/data_prec_final_wht_polar.parquet")
+write_parquet(data_final, "Data/data_prec_final_wht_polar.parquet")
 
 # export excel for stata
-write_xlsx(data_final_wp, "Data/data_prec_final_wht_polar.xlsx")
+write_xlsx(data_final, "Data/data_prec_final_wht_polar.xlsx")
 

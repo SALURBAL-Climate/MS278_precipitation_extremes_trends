@@ -7,14 +7,15 @@
 library(readr); library(dplyr); library(tidyverse)
 library(purrr); library(writexl); library(tidyr)
 library(glue); library(foreign); library(readxl)
+library(dplyr)
 
 #--------------------------------------------------
 # Supplementary table 1
 #--------------------------------------------------
 # 1. No categorical variables
 univariate_R95PCC <- read_csv("Model_results/City_center/R95PCC/R95PCC_univariate.csv")
-univariate_RX1dayCC <- read_csv("Model_results/City_center/RX1dayCC/RX1dayCC_univariate.csv")
-univariate_RX5dayCC <- read_csv("Model_results/City_center/RX5dayCC/RX5dayCC_univariate.csv")
+univariate_RX1dayCC <- read_csv("Model_results/City_center/Rx1dayCC/Rx1dayCC_univariate.csv")
+univariate_RX5dayCC <- read_csv("Model_results/City_center/Rx5dayCC/Rx5dayCC_univariate.csv")
 
 univariate_R95PCC <- univariate_R95PCC %>%
   mutate(sig = ifelse(p < 0.05, "*", ""),
@@ -54,8 +55,8 @@ univariate_join_v
 
 # 2. Categorical variables - Climate zones
 clz_R95PCC <- read_csv("Model_results/City_center/R95PCC/R95PCC_CLZ.csv")
-clz_RX1dayCC <- read_csv("Model_results/City_center/RX1dayCC/RX1dayCC_CLZ.csv")
-clz_RX5dayCC <- read_csv("Model_results/City_center/RX5dayCC/RX5dayCC_CLZ.csv")
+clz_RX1dayCC <- read_csv("Model_results/City_center/Rx1dayCC/Rx1dayCC_CLZ.csv")
+clz_RX5dayCC <- read_csv("Model_results/City_center/Rx5dayCC/Rx5dayCC_CLZ.csv")
 
 clz_R95PCC <- clz_R95PCC %>%
   mutate(sig = ifelse(p < 0.05, "*", ""),
@@ -144,7 +145,7 @@ note_row <- tibble(
     "b time-varying variable with interpolation between census years and last observation carried forward;\n",
     "c time-varying variable with last observation carried forward for years without data availability;\n",
     "d time-invariant variable;\n",
-    "Mean differences are per SD higher value of the city-level predictor unless otherwise noted.\n"))
+    "Mean differences estimates are expressed per 1 SD increase in the within-city deviation of the predictor, calculated as the difference between each city-year value and the city-specific mean.\n"))
 
 sup_table_1_final <- bind_rows(sup_table_1, note_row) %>% 
   rename("  " = "variable")
@@ -291,7 +292,8 @@ sup_table_3 <- sup_table_3 %>%
   arrange(variable) %>% 
   mutate(variable = as.character(variable))
 
-note_row3 <- tibble(variable = "Note:* statistically significant (p < 0.05)")
+note_row3 <- tibble(variable = "Note:* statistically significant (p < 0.05); \n",
+                    "Estimates are expressed per 1 SD increase in the within-city deviation of the predictor, calculated as the difference between each city-year value and the city-specific mean.")
 
 sup_table_3_final <- bind_rows(sup_table_3, note_row3) %>% 
   rename("  " = variable)
@@ -323,7 +325,44 @@ slopes_Rx1day <- read_csv("Model_results/L1AD/Rx1day/Rx1day_city_random_slopes.c
 slopes_Rx5day <- read_csv("Model_results/L1AD/Rx5day/Rx5day_city_random_slopes.csv")
 L1AD_name <- read.dbf("Data/SHP/L1AD_centroid.dbf")
 
-# Prepare data
+# Calculate city-slopes summary and pct
+# Function to calculate slope summary
+get_slope_summary <- function(data, index_name) {
+  
+  q <- quantile(
+    data$slope_total,
+    probs = c(0.025, 0.25, 0.75, 0.975),
+    na.rm = TRUE)
+  
+  trend <- data %>%
+    mutate(slope_rounded = round(slope_total, 0),
+           trend = case_when(slope_rounded > 0 ~ "Increasing", 
+                             slope_rounded < 0 ~ "Decreasing", TRUE ~ "Stable")) %>%
+    count(trend) %>%
+    mutate(percent = round(100 * n / sum(n), 0))
+  
+  data.frame(Index = index_name,
+             P2.5 = q[1],
+             P25 = q[2],
+             P75 = q[3],
+             P97.5 = q[4],
+             Increasing_pct = trend$percent[match("Increasing", trend$trend)],
+             Stable_pct = trend$percent[match("Stable", trend$trend)],
+             Decreasing_pct = trend$percent[match("Decreasing", trend$trend)])
+}
+
+# Create final table
+slope_summary <- bind_rows(
+  get_slope_summary(slopes_R95P, "R95P"),
+  get_slope_summary(slopes_Rx1day, "RX1day"),
+  get_slope_summary(slopes_Rx5day, "RX5day"))
+
+slope_summary <- slope_summary %>%
+  mutate(across(c(P2.5, P25, P75, P97.5), ~ round(.x, 2)))
+
+write_xlsx(slope_summary, "Tables/city_slope_summary.xlsx")
+
+# Prepare data for sup table 5
 slopes_R95P <- slopes_R95P %>% 
   rename(R95P = slope_total) %>% 
   mutate(R95P = round(R95P, 0)) %>% 
@@ -355,3 +394,79 @@ sup_table5_final <- sup_table_5 %>%
   arrange(Country, `City name`)
 
 write_xlsx(sup_table5_final, "Tables/sup_table_5.xlsx")
+
+#-----------------------------------------------------
+# Supplementary Table 6
+#-----------------------------------------------------
+data <- read_parquet("Data/data_prec_final_wht_polar.parquet")
+
+vars <- c(
+  "total_pop",
+  "pop_density_guf",
+  "pop_over65",
+  "GDP",
+  "education",
+  "NDVI")
+
+z_score <- function(x) {
+  (x - mean(x, na.rm = TRUE)) / sd(x, na.rm = TRUE)
+}
+
+data <- data %>%
+  group_by(SALID1) %>%
+  mutate(across(all_of(vars), ~ .x - mean(.x, na.rm = TRUE),.names = "{.col}_wht")) %>%
+  ungroup()
+
+data <- data %>%
+  mutate(across(all_of(vars), z_score,.names = "{.col}_z"))
+
+data <- data %>%
+  mutate(across(all_of(paste0(vars, "_wht")), z_score,.names = "{.col}_z"))
+
+data %>%
+  select(SALID1,
+         YEAR,
+         all_of(vars),
+         all_of(paste0(vars, "_z")),
+         all_of(paste0(vars, "_wht")),
+         all_of(paste0(vars, "_wht_z")))
+
+variable_labels <- c(
+  total_pop = "City population",
+  pop_density_guf = "Population density",
+  pop_over65 = "Population ≥65 years",
+  GDP = "GDP per capita",
+  education = "Completed primary education",
+  NDVI = "NDVI")
+
+sd_table <- tibble(`City characteristic` = unname(variable_labels),
+                   `SD (Pooled)` = sapply(names(variable_labels),
+                                          function(v) {
+                                            sd(data[[v]], na.rm = TRUE)
+                                          }),
+                   `SD (Within-city)` = sapply(
+                     names(variable_labels),
+                     function(v) {
+                       sd(data[[paste0(v, "_wht")]], na.rm = TRUE)
+                     }))
+
+sup_table_6 <- sd_table %>%
+  mutate(`SD (Pooled)` = round(`SD (Pooled)`, 3),
+         `SD (Within-city)` = round(`SD (Within-city)`, 3))
+
+
+sup_table_6 <- tibble(
+  `City characteristic` = unname(variable_labels),
+  `SD (Pooled)` = sapply(
+    names(variable_labels),
+    function(v) sd(data[[v]], na.rm = TRUE)),
+  `SD (Within-city)` = sapply(
+    names(variable_labels),
+    function(v) sd(data[[paste0(v, "_wht")]], na.rm = TRUE)))
+
+sup_table_6 <- sup_table_6 %>%
+  mutate(`SD (Pooled)` = round(`SD (Pooled)`, 4), 
+         `SD (Within-city)` = round(`SD (Within-city)`, 4))
+
+
+write_xlsx(sup_table_6, "Tables/Sup_table_6.xlsx")

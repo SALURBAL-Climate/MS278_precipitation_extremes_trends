@@ -13,11 +13,15 @@ library(ggspatial); library(RColorBrewer); library(scales)
 library(ggpubr); library(xlsx); library(readxl)
 library(grid); library(patchwork)
 
+dir.create("Figures", recursive = TRUE, showWarnings = FALSE)
+
 data <- read_parquet("Data/data_prec_final_wht_polar.parquet")
 
 #--------------------------------------------------
 # Figure 1
 #--------------------------------------------------
+set.seed(1234)
+
 Figure_1a <- data %>%
   ggplot() +
   geom_jitter(aes(x = Country, y = R95P),
@@ -25,9 +29,9 @@ Figure_1a <- data %>%
   geom_boxplot(aes(x = Country, y = R95P),
                color = "#252525", fill = NA, linewidth = 0.4, width = 0.6, outlier.shape = NA) +
   theme_classic() +
-  theme(plot.title = element_text(size = 18, face = "bold"),
-        axis.text.x = element_text(size = 14, hjust = 0.5, vjust = 0.5),
-        axis.text.y = element_text(size = 14),
+  theme(plot.title = element_text(size = 22, face = "bold"),
+        axis.text.x = element_text(size = 18, hjust = 0.5, vjust = 0.5),
+        axis.text.y = element_text(size = 16),
         axis.title = element_text(size = 16),
         panel.grid.major.x = element_blank(),
         legend.position = "none") +
@@ -43,9 +47,9 @@ Figure_1b <- data %>%
   geom_boxplot(aes(x = Country, y = Rx1day),
                color = "#252525", fill = NA, linewidth = 0.4, width = 0.6, outlier.shape = NA) +
   theme_classic() +
-  theme(plot.title = element_text(size = 18, face = "bold"),
-        axis.text.x = element_text(size = 14, hjust = 0.5, vjust = 0.5),
-        axis.text.y = element_text(size = 14),
+  theme(plot.title = element_text(size = 22, face = "bold"),
+        axis.text.x = element_text(size = 18, hjust = 0.5, vjust = 0.5),
+        axis.text.y = element_text(size = 16),
         axis.title = element_text(size = 16),
         panel.grid.major.x = element_blank(),
         legend.position = "none") +
@@ -61,8 +65,8 @@ Figure_1c <- data %>%
   geom_boxplot(aes(x = Country, y = Rx5day),
                color = "#252525", fill = NA, linewidth = 0.4, width = 0.6, outlier.shape = NA) +
   theme_classic() +
-  theme(plot.title = element_text(size = 18, face = "bold"),
-        axis.text.x = element_text(size = 16, hjust = 0.5, vjust = 0.5),
+  theme(plot.title = element_text(size = 22, face = "bold"),
+        axis.text.x = element_text(size = 18, hjust = 0.5, vjust = 0.5),
         axis.text.y = element_text(size = 16),
         axis.title = element_text(size = 16),
         panel.grid.major.x = element_blank(),
@@ -101,10 +105,10 @@ Figure_2a <- ggplot() +
   theme(
     strip.background = element_rect(fill = "white", color = "black", linewidth = 0.4),
     strip.text = element_text(face = "bold", size = 16),
-    plot.title = element_text(size = 18, face = "bold"),
-    axis.text.x = element_text(size = 12, angle = 90, hjust = 1, vjust = 0.5, color = "black"),
+    plot.title = element_text(size = 20, face = "bold"),
+    axis.text.x = element_text(size = 14, angle = 90, hjust = 1, vjust = 0.5, color = "black"),
     axis.text.y = element_text(size = 14, color = "black"),
-    axis.title.x = element_text(size = 14),
+    axis.title.x = element_text(size = 16),
     axis.title.y = element_text(size = 16),
     panel.spacing = unit(1, "lines"))
 
@@ -124,10 +128,10 @@ Figure_2b <- ggplot() +
   theme(
     strip.background = element_rect(fill = "white", color = "black", linewidth = 0.4),
     strip.text = element_text(face = "bold", size = 16),
-    plot.title = element_text(size = 18, face = "bold"),
-    axis.text.x = element_text(size = 12, angle = 90, hjust = 1, vjust = 0.5, color = "black"),
+    plot.title = element_text(size = 20, face = "bold"),
+    axis.text.x = element_text(size = 14, angle = 90, hjust = 1, vjust = 0.5, color = "black"),
     axis.text.y = element_text(size = 14, color = "black"),
-    axis.title.x = element_text(size = 14),
+    axis.title.x = element_text(size = 16),
     axis.title.y = element_text(size = 16),
     panel.spacing = unit(1, "lines"))
 
@@ -147,10 +151,10 @@ Figure_2c <- ggplot() +
   theme(
     strip.background = element_rect(fill = "white", color = "black", linewidth = 0.4),
     strip.text = element_text(face = "bold", size = 16),
-    plot.title = element_text(size = 18, face = "bold"),
-    axis.text.x = element_text(size = 12, angle = 90, hjust = 1, vjust = 0.5, color = "black"),
+    plot.title = element_text(size = 20, face = "bold"),
+    axis.text.x = element_text(size = 14, angle = 90, hjust = 1, vjust = 0.5, color = "black"),
     axis.text.y = element_text(size = 14, color = "black"),
-    axis.title.x = element_text(size = 14),
+    axis.title.x = element_text(size = 16),
     axis.title.y = element_text(size = 16),
     panel.spacing = unit(1, "lines"))
 

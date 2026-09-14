@@ -8,6 +8,8 @@ library(readr); library(dplyr); library(tidyverse)
 library(purrr); library(writexl); library(tidyr)
 library(arrow); library(glue)
 
+dir.create("Tables", recursive = TRUE, showWarnings = FALSE)
+
 #--------------------------------------------------
 # Table 1
 #--------------------------------------------------
@@ -43,23 +45,6 @@ add_total <- function(data, summary_expr, value_name) {
 # 4. Convert columns to character
 to_char <- function(df) {
   df %>% mutate(across(everything(), as.character))
-}
-
-add_total <- function(data, summary_expr, value_name) {
-  
-  by_country <- data %>%
-    summarize(
-      !!value_name := {{ summary_expr }},.by = Country)
-  
-  total <- data %>%
-    summarize(
-      !!value_name := {{ summary_expr }}) %>%
-    mutate(Country = "Total")
-  
-  bind_rows(by_country, total) %>%
-    pivot_wider(
-      names_from = Country,
-      values_from = !!sym(value_name))
 }
 
 # 5. Number of cities
@@ -400,7 +385,7 @@ note_row <- tibble(
     "b time-varying variable with interpolation between census years and last observation carried forward;\n",
     "c time-varying variable with last observation carried forward for years without data availability;\n",
     "d time-invariant variable;\n",
-    "Mean differences are per SD higher value of the city-level predictor unless otherwise noted.\n"))
+    "Mean differences estimates are expressed per 1 SD increase in the pooled distribution of the city-level predictor across all city-year observations.\n"))
 
 table2_final <- bind_rows(table2, note_row) %>% 
   rename("  " = "variable")
@@ -547,7 +532,8 @@ table_4 <- table_4 %>%
   arrange(variable) %>% 
   mutate(variable = as.character(variable))
 
-note_row4 <- tibble(variable = "Note:* statistically significant (p < 0.05)")
+note_row4 <- tibble(variable = "Note:* statistically significant (p < 0.05);\n",
+                    "Estimates are expressed per 1 SD increase in the within-city deviation of the predictor, calculated as the difference between each city-year value and the city-specific mean")
 
 table_4_final <- bind_rows(table_4, note_row4) %>% 
   rename("  " = variable)

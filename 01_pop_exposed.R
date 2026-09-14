@@ -2,6 +2,7 @@
 # MS278: Descriptive precitation extremes
 #
 # This script calculate the population exposed to prec extremes
+# Population exposed - person-days and person-years
 #
 ##################################################################
 
@@ -66,9 +67,10 @@ pop_total_year <- data %>%
          py_exposure_2000_24 = round(pop_exposed_2000_24 / 365.25, 0))
 
 max(pop_total_year$py_exposure_2000_24)
+print(pop_total_year, n =25)
 
 # Export
-write_xlsx(pop_annual_country, "pop_annual_country.xlsx")
+write_xlsx(pop_annual_country, "Data/pop_annual_country.xlsx")
 
 #---------------------------------------------------------------
 # Calculate the overall % and by country from the total
@@ -80,6 +82,7 @@ total_country <- pop_annual_country %>%
             py_exposure_2000_24_total = sum(py_exposure_2000_24, na.rm = TRUE),.by = Country)
 
 sum(total_country$py_exposure_2000_24_total)
+print(total_country)
 
 total_country_table <- total_country %>%
   pivot_longer(cols = -Country,
@@ -93,6 +96,7 @@ table_country_perc <- total_country_table %>%
   mutate(across(-c(metric, Total), ~ (.x / Total) * 100)) %>%
   mutate(across(-c(metric, Total), ~ round(.x, 1)), Total = 100)
 
+print(table_country_perc)
 
 # by country and year
 total_country_year <- pop_annual_country %>%
@@ -112,3 +116,5 @@ table_country_year <- total_country_year %>%
 table_country_year_perc <- table_country_year %>%
   mutate(across(-c(metric, YEAR, Total), ~ (.x / Total) * 100)) %>%
   mutate(across(-c(metric, YEAR, Total), ~ round(.x, 1)), Total = 100)
+
+print(table_country_year_perc, n = 90)
